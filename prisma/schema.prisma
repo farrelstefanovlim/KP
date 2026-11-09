@@ -1,0 +1,347 @@
+// prisma/schema.prisma
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS (Standarisasi Data Sesuai ERD)
+// ==========================================
+
+enum RoleUser {
+  SUPERADMIN
+  STAFF
+}
+
+enum AksiAudit {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+}
+
+enum StatusKendaraan {
+  BAGUS
+  BENGKEL
+}
+
+enum SumberBensin {
+  TANGKI
+  PERTAMINA
+  ECERAN
+}
+
+enum SumberDana {
+  KAS_BESAR
+  PETTY_CASH
+}
+
+enum TipeMutasiTangki {
+  MASUK
+  KELUAR
+  PENYESUAIAN
+}
+
+enum TipeKasKecil {
+  MASUK
+  KELUAR
+}
+
+// ==========================================
+// MODELS (Tabel Database)
+// ==========================================
+
+model User {
+  id_user         String    @id @default(uuid()) @db.Uuid
+  username        String    @unique @db.VarChar(50)
+  password_hash   String    @db.VarChar(255)
+  role            RoleUser
+  nama            String    @db.VarChar(100)
+  is_active       Boolean   @default(true)
+  id_user_pembuat String?   @db.Uuid
+  created_at      DateTime  @default(now())
+  modified_at     DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  // Relasi Self-referencing (User membuat User)
+  pembuat         User?     @relation("UserPembuat", fields: [id_user_pembuat], references: [id_user])
+  dibuat_oleh     User[]    @relation("UserPembuat")
+
+  // Relasi ke tabel operasional
+  kendaraan_sopir     KendaraanSopir[]
+  log_bensin          LogBensin[]
+  log_angin           LogAngin[]
+  log_lain            LogLain[]
+  pembelian_sparepart PembelianSparepart[]
+  mutasi_tangki       MutasiTangki[]
+  kas_kecil           KasKecil[]
+  audit_pelaku        Audit[]              @relation("AuditPelaku")
+
+  @@map("users")
+}
+
+model Audit {
+  id_audit       String    @id @default(uuid()) @db.Uuid
+  tabel          String    @db.VarChar(50)
+  aksi           AksiAudit
+  data_lama      Json?
+  data_baru      Json?
+  id_user_pelaku String    @db.Uuid
+  created_at     DateTime  @default(now())
+
+  user_pelaku    User      @relation("AuditPelaku", fields: [id_user_pelaku], references: [id_user])
+
+  @@map("audit")
+}
+
+model Kendaraan {
+  id_kendaraan   String          @id @default(uuid()) @db.Uuid
+  plat_nomor     String          @unique @db.VarChar(20)
+  merk           String          @db.VarChar(50)
+  tahun          Int
+  status         StatusKendaraan @default(BAGUS)
+  km_terakhir    Decimal         @db.Decimal(10, 2)
+  created_at     DateTime        @default(now())
+  modified_at    DateTime        @updatedAt
+  deleted_at     DateTime?
+
+  kendaraan_sopir        KendaraanSopir[]
+  log_bensin             LogBensin[]
+  log_angin              LogAngin[]
+  log_lain               LogLain[]
+  pembelian_sparepart    PembelianSparepart[]
+  riwayat_plat_kendaraan RiwayatPlatKendaraan[]
+
+  @@map("kendaraan")
+}
+
+model Sopir {
+  id_sopir       String    @id @default(uuid()) @db.Uuid
+  nama           String    @db.VarChar(100)
+  is_active      Boolean   @default(true)
+  tanggal_masuk  DateTime  @db.Date
+  tanggal_keluar DateTime? @db.Date
+  created_at     DateTime  @default(now())
+  modified_at    DateTime  @updatedAt
+  deleted_at     DateTime?
+
+  kendaraan_sopir KendaraanSopir[]
+  log_bensin      LogBensin[]
+  log_angin       LogAngin[]
+  log_lain        LogLain[]
+
+  @@map("sopir")
+}
+
+model KendaraanSopir {
+  id_vehicle_sopir String    @id @default(uuid()) @db.Uuid
+  id_kendaraan     String    @db.Uuid
+  id_sopir         String    @db.Uuid
+  id_user_input    String    @db.Uuid
+  mulai            DateTime  @db.Date
+  selesai          DateTime? @db.Date
+  keterangan       String?   @db.Text
+  created_at       DateTime  @default(now())
+  modified_at      DateTime  @updatedAt
+  deleted_at       DateTime?
+
+  kendaraan  Kendaraan @relation(fields: [id_kendaraan], references: [id_kendaraan])
+  sopir      Sopir     @relation(fields: [id_sopir], references: [id_sopir])
+  user_input User      @relation(fields: [id_user_input], references: [id_user])
+
+  @@map("kendaraan_sopir")
+}
+
+model PengaturanApp {
+  key_app     String   @id @db.VarChar(50)
+  value       String   @db.Text
+  keterangan  String?  @db.Text
+  created_at  DateTime @default(now())
+  modified_at DateTime @updatedAt
+
+  @@map("pengaturan_app")
+}
+
+model RiwayatPlatKendaraan {
+  id_riwayat_plat String   @id @default(uuid()) @db.Uuid
+  id_kendaraan    String   @db.Uuid
+  plat_nomor_lama String   @db.VarChar(20)
+  berlaku_sampai  DateTime @db.Date
+  created_at      DateTime @default(now())
+  modified_at     DateTime @updatedAt
+
+  kendaraan Kendaraan @relation(fields: [id_kendaraan], references: [id_kendaraan])
+
+  @@map("riwayat_plat_kendaraan")
+}
+
+model LogBensin {
+  id_bbm          String       @id @default(uuid()) @db.Uuid
+  id_kendaraan    String       @db.Uuid
+  id_sopir        String?      @db.Uuid
+  id_user_input   String       @db.Uuid
+  tanggal         DateTime     @db.Date
+  sumber          SumberBensin
+  tempat_beli     String?      @db.VarChar(100)
+  harga_per_liter Decimal      @db.Decimal(10, 2)
+  total_harga     Decimal      @db.Decimal(12, 2)
+  jumlah_liter    Decimal      @db.Decimal(6, 2)
+  jarak_tempuh    Decimal      @db.Decimal(10, 2)
+  km_saat_isi     Decimal      @db.Decimal(10, 2)
+  keterangan      String?      @db.Text
+  created_at      DateTime     @default(now())
+  modified_at     DateTime     @updatedAt
+  deleted_at      DateTime?
+
+  kendaraan  Kendaraan  @relation(fields: [id_kendaraan], references: [id_kendaraan])
+  sopir      Sopir?     @relation(fields: [id_sopir], references: [id_sopir])
+  user_input User       @relation(fields: [id_user_input], references: [id_user])
+  kas_kecil  KasKecil[]
+
+  @@map("log_bensin")
+}
+
+model LogAngin {
+  id_angin      String     @id @default(uuid()) @db.Uuid
+  id_kendaraan  String     @db.Uuid
+  id_sopir      String?    @db.Uuid
+  id_user_input String     @db.Uuid
+  tanggal       DateTime   @db.Date
+  biaya         Decimal    @db.Decimal(12, 2)
+  sumber_dana   SumberDana
+  keterangan    String?    @db.Text
+  created_at    DateTime   @default(now())
+  modified_at   DateTime   @updatedAt
+  deleted_at    DateTime?
+
+  kendaraan  Kendaraan  @relation(fields: [id_kendaraan], references: [id_kendaraan])
+  sopir      Sopir?     @relation(fields: [id_sopir], references: [id_sopir])
+  user_input User       @relation(fields: [id_user_input], references: [id_user])
+  kas_kecil  KasKecil[]
+
+  @@map("log_angin")
+}
+
+model LogLain {
+  id_lain       String     @id @default(uuid()) @db.Uuid
+  id_kendaraan  String     @db.Uuid
+  id_sopir      String?    @db.Uuid
+  id_user_input String     @db.Uuid
+  tanggal       DateTime   @db.Date
+  kategori      String     @db.VarChar(100)
+  biaya         Decimal    @db.Decimal(12, 2)
+  sumber_dana   SumberDana
+  keterangan    String?    @db.Text
+  created_at    DateTime   @default(now())
+  modified_at   DateTime   @updatedAt
+  deleted_at    DateTime?
+
+  kendaraan  Kendaraan  @relation(fields: [id_kendaraan], references: [id_kendaraan])
+  sopir      Sopir?     @relation(fields: [id_sopir], references: [id_sopir])
+  user_input User       @relation(fields: [id_user_input], references: [id_user])
+  kas_kecil  KasKecil[]
+
+  @@map("log_lain")
+}
+
+model PembelianSparepart {
+  id_nota_sparepart String     @id @default(uuid()) @db.Uuid
+  id_kendaraan      String     @db.Uuid
+  id_user_input     String     @db.Uuid
+  tanggal_beli      DateTime   @db.Date
+  tanggal_pasang    DateTime?  @db.Date
+  km_saat_ganti     Decimal    @db.Decimal(10, 2)
+  sumber_dana       SumberDana
+  total_harga       Decimal    @db.Decimal(12, 2)
+  tempat_beli       String?    @db.VarChar(100)
+  keterangan        String?    @db.Text
+  created_at        DateTime   @default(now())
+  modified_at       DateTime   @updatedAt
+  deleted_at        DateTime?
+
+  kendaraan      Kendaraan       @relation(fields: [id_kendaraan], references: [id_kendaraan])
+  user_input     User            @relation(fields: [id_user_input], references: [id_user])
+  item_sparepart ItemSparepart[]
+  kas_kecil      KasKecil[]
+
+  @@map("pembelian_sparepart")
+}
+
+model ItemSparepart {
+  id_item_sparepart      String   @id @default(uuid()) @db.Uuid
+  id_pembelian_sparepart String   @db.Uuid
+  nama                   String   @db.VarChar(100)
+  kategori               String   @db.VarChar(50)
+  jumlah                 Decimal  @db.Decimal(10, 2)
+  harga_satuan           Decimal  @db.Decimal(12, 2)
+  subtotal               Decimal  @db.Decimal(12, 2)
+  created_at             DateTime @default(now())
+  modified_at            DateTime @updatedAt
+
+  pembelian_sparepart PembelianSparepart @relation(fields: [id_pembelian_sparepart], references: [id_nota_sparepart])
+
+  @@map("item_sparepart")
+}
+
+model TangkiBbm {
+  id_tangki       String    @id @default(uuid()) @db.Uuid
+  nama            String    @db.VarChar(100)
+  kapasitas_liter Decimal   @db.Decimal(10, 2)
+  created_at      DateTime  @default(now())
+  modified_at     DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  mutasi_tangki MutasiTangki[]
+
+  @@map("tangki_bbm")
+}
+
+model MutasiTangki {
+  id_mutasi_tangki          String           @id @default(uuid()) @db.Uuid
+  id_tangki                 String           @db.Uuid
+  id_user_input             String           @db.Uuid
+  tipe                      TipeMutasiTangki
+  liter                     Decimal          @db.Decimal(10, 2)
+  total_harga               Decimal          @db.Decimal(12, 2)
+  tanggal_bbm_keluar_tangki DateTime         @db.Date
+  created_at                DateTime         @default(now())
+  modified_at               DateTime         @updatedAt
+
+  tangki     TangkiBbm @relation(fields: [id_tangki], references: [id_tangki])
+  user_input User      @relation(fields: [id_user_input], references: [id_user])
+
+  @@map("mutasi_tangki")
+}
+
+model KasKecil {
+  id_kas_kecil           String       @id @default(uuid()) @db.Uuid
+  tanggal                DateTime     @db.Date
+  tipe                   TipeKasKecil
+  kategori               String       @db.VarChar(100)
+  keterangan             String?      @db.Text
+  jumlah                 Decimal      @db.Decimal(12, 2)
+  id_user_input          String       @db.Uuid
+  
+  // Relasi Nullable ke sumber pengeluaran (salah satu saja yang diisi)
+  id_log_bensin          String?      @db.Uuid
+  id_log_angin           String?      @db.Uuid
+  id_log_lain            String?      @db.Uuid
+  id_pembelian_sparepart String?      @db.Uuid
+  
+  created_at             DateTime     @default(now())
+  modified_at            DateTime     @updatedAt
+  deleted_at             DateTime?
+
+  user_input          User                @relation(fields: [id_user_input], references: [id_user])
+  log_bensin          LogBensin?          @relation(fields: [id_log_bensin], references: [id_bbm])
+  log_angin           LogAngin?           @relation(fields: [id_log_angin], references: [id_angin])
+  log_lain            LogLain?            @relation(fields: [id_log_lain], references: [id_lain])
+  pembelian_sparepart PembelianSparepart? @relation(fields: [id_pembelian_sparepart], references: [id_nota_sparepart])
+
+  @@map("kas_kecil")
+}
