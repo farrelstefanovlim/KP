@@ -62,6 +62,7 @@ model User {
   password_hash   String    @db.VarChar(255)
   role            RoleUser
   nama            String    @db.VarChar(100)
+  jabatan         String?   @db.VarChar(100)
   is_active       Boolean   @default(true)
   id_user_pembuat String?   @db.Uuid
   created_at      DateTime  @default(now())
