@@ -57,7 +57,7 @@ export default async function DashboardLayout({
       </aside>
 
       {/* KONTEN UTAMA */}
-      <main className="flex-1 pl-64">
+      <main className="min-w-0 flex-1 pl-64">
         <div className="p-8 max-w-7xl mx-auto">
           {children}
         </div>
