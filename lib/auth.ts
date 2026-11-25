@@ -44,6 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Dipanggil tiap token dibuat/diperbarui — kita selipkan role & allowedModules ke dalamnya
     async jwt({ token, user }) {
       if (user) {
+        token.id = user.id;
         token.role = (user as any).role;
         token.username = (user as any).username;
         token.allowedModules = (user as any).allowedModules;
@@ -53,6 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Dipanggil tiap session dibaca di halaman — kita salin dari token ke session.user
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = (token.id || token.sub) as string;
         (session.user as any).role = token.role;
         (session.user as any).username = token.username;
         (session.user as any).allowedModules = token.allowedModules;

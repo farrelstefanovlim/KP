@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "./logoutbutton";
+import { SidebarNav } from "@/components/sidebar-nav";
 
 export default async function DashboardLayout({
   children,
@@ -34,26 +35,7 @@ export default async function DashboardLayout({
           {/* Menu Navigasi */}
           <div className="px-4 py-6">
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Menu Utama</p>
-            <nav className="space-y-1.5">
-              <Link href="/dashboard" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span>📊</span> Dashboard
-              </Link>
-              <Link href="/dashboard/kendaraan" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
-                <span>🚛</span> Data Kendaraan
-              </Link>
-              <Link href="/dashboard/input-operasional" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
-                <span>➕</span> Input Operasional
-              </Link>
-              <Link href="/dashboard/kas-kecil" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
-                <span>💳</span> Kas Kecil
-              </Link>
-              <Link href="/dashboard/laporan" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
-                <span>📈</span> Laporan
-              </Link>
-              <Link href="/dashboard/manajemen-user" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
-                <span>👤</span> Manajemen User
-              </Link>
-            </nav>
+            <SidebarNav />
           </div>
         </div>
 
